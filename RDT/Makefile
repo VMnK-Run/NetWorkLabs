@@ -3,7 +3,7 @@ OBJ_DIR := obj
 
 SRC := $(wildcard $(SRC_DIR)/*.c)
 OBJ := $(OBJ_DIR)/StopAndWait.o
-BIN := SW.exe
+BIN := SW
 CC := gcc
 CPPFLAGS := -Iinclude
 CFLAGS := -g -Wall
@@ -21,7 +21,9 @@ $(OBJ_DIR):
 	mkdir $@
 
 .PHONY: clean
-# 这是在Windows系统下的命令
+
 clean:
-	del $(BIN)
-	rmdir /s/q $(OBJ_DIR)
+# del $(BIN)
+# rmdir /s/q $(OBJ_DIR)
+	$(RM) $(OBJ) $(BIN) log/*.txt
+	$(RM) -rf $(OBJ_DIR) 

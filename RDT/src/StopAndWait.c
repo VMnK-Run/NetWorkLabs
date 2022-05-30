@@ -60,11 +60,11 @@ void stoptimer(int AorB);
 void tolayer3(int AorB, struct pkt);
 void tolayer5(int AorB, char datasent[20]);
 
-#define FILE_NAME "D:\\北小洋\\21222\\计算机网络\\NetWorkLabs\\RDT\\log\\trace.txt"
+#define FILE_NAME "../RDT/log/sw_trace.txt"
 #define WriteIn(format, ...) \
         do {\
             FILE *file;\
-            file = fopen(FILE_NAME, "w+");\
+            file = fopen(FILE_NAME, "a+");\
             fprintf(file, format,  ##__VA_ARGS__);\
             fclose(file);\
         } while(0)
@@ -104,6 +104,7 @@ void A_output(struct msg message)
     WriteIn("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
     if(A.A_state == WAIT) {
         printf("[Sender] The above application data discarded since waiting for ACK\n");
+        WriteIn("[Sender] The above application data discarded since waiting for ACK\n");
         return;
     } else {
         out_pkt.acknum = A.wait_acknum;
@@ -116,6 +117,7 @@ void A_output(struct msg message)
         starttimer(0, A_inter);
         tolayer3(0, out_pkt);
         printf("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", out_pkt.seqnum, out_pkt.seqnum, out_pkt.checksum);
+        WriteIn("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", out_pkt.seqnum, out_pkt.seqnum, out_pkt.checksum);
         return;
     }
 }
@@ -131,15 +133,18 @@ void A_input(struct pkt packet)
     int checksum = getChecksum(packet);
     if(checksum != packet.checksum) {
         printf("[Sender] Corrupt packet received.\n");
+        WriteIn("[Sender] Corrupt packet received.\n");
         return;
     }
     if(packet.acknum == A.wait_acknum) {
         printf("[Sender] ACK %d received.\n", packet.seqnum);
+        WriteIn("[Sender] ACK %d received.\n", packet.seqnum);
         stoptimer(0);
         A.A_state = READY;
         return;
     } else {
         printf("[Sender] Corrupted packet Received At %d\n", packet.acknum);
+        WriteIn("[Sender] Corrupted packet Received At %d\n", packet.acknum);
         return;
     }
 }
@@ -148,6 +153,7 @@ void A_input(struct pkt packet)
 int A_timerinterrupt()
 {
     printf("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
+    WriteIn("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
     tolayer3(0, A.A_buffer);
     starttimer(0, A_inter);
 }  
@@ -176,27 +182,34 @@ void B_input(struct pkt packet)
 
     if(checksum != packet.checksum) {
         printf("[Receiver] Corrupt packet received.\n");
+        WriteIn("[Receiver] Corrupt packet received.\n");
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
         tolayer3(1, out_pkt);
         printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
+        WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         return;
     }
     if(packet.seqnum != B_expectednum) {
         printf("[Receiver] Corrupt packet received.\n");
+        WriteIn("[Receiver] Corrupt packet received.\n");
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
         tolayer3(1, out_pkt);
         printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
+        WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         return;
     }
     printf("[Receiver] Packet %d received.\n", packet.seqnum);
+    WriteIn("[Receiver] Packet %d received.\n", packet.seqnum);
     printf("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
+    WriteIn("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
     B_expectednum = (B_expectednum + 1) % 2;
     out_pkt.acknum = B_expectednum;
     out_pkt.checksum = getChecksum(out_pkt);
     tolayer3(1, out_pkt);
     printf("[Receiver] ACK %d sent.\n", out_pkt.seqnum);
+    WriteIn("[Receiver] ACK %d sent.\n", out_pkt.seqnum);
     memcpy(message.data, packet.payload, 20);
     tolayer5(1, message.data);
 }
@@ -278,13 +291,21 @@ int main()
         if (TRACE>=2) {
             printf("\nEVENT time: %f,",eventptr->evtime);
             printf("  type: %d",eventptr->evtype);
+            WriteIn("\nEVENT time: %f,",eventptr->evtime);
+            WriteIn("  type: %d",eventptr->evtype);
             if (eventptr->evtype==0)
-                printf(", timerinterrupt  ");
-            else if (eventptr->evtype==1)
+                {printf(", timerinterrupt  ");WriteIn(", timerinterrupt  ");}
+            else if (eventptr->evtype==1) {
                 printf(", fromlayer5 ");
-            else
+                WriteIn(", fromlayer5 ");
+            }
+            else {
                 printf(", fromlayer3 ");
+                WriteIn(", fromlayer3 ");
+            }
+                
             printf(" entity: %d\n",eventptr->eventity);
+            WriteIn(" entity: %d\n",eventptr->eventity);
         }
         time = eventptr->evtime;        /* update time to next event time */
         if (nsim == nsimmax)
@@ -298,8 +319,12 @@ int main()
                 msg2give.data[i] = 97 + j;
             if (TRACE>2) {
                 printf("          MAINLOOP: data given to student: ");
-                for (i=0; i<20; i++) 
+                WriteIn("          MAINLOOP: data given to student: ");
+                for (i=0; i<20; i++) {
                     printf("%c", msg2give.data[i]);
+                    WriteIn("%c", msg2give.data[i]);
+                } 
+                WriteIn("\n");
                 printf("\n");
             }
             nsim++;
@@ -329,12 +354,14 @@ int main()
         }
         else {
             printf("INTERNAL PANIC: unknown event type \n");
+            WriteIn("INTERNAL PANIC: unknown event type \n");
         }
         free(eventptr);
     }
 
 terminate:
     printf(" Simulator terminated at time %f\n after sending %d msgs from layer5\n",time,nsim);
+    WriteIn(" Simulator terminated at time %f\n after sending %d msgs from layer5\n",time,nsim);
 }
 
 
@@ -346,6 +373,7 @@ void init()                         /* initialize the simulator */
     float jimsrand();
 
     printf("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n");
+    WriteIn("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n");
     printf("Enter the number of messages to simulate: ");
     scanf("%d",&nsimmax);
     printf("Enter  packet loss probability [enter 0.0 for no loss]:");
@@ -384,7 +412,7 @@ void init()                         /* initialize the simulator */
 /****************************************************************************/
 float jimsrand() 
 {
-    double mmm = 0x7fff;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
+    double mmm = 2147483647;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
     float x;                   /* individual students may need to change mmm */ 
     x = rand()/mmm;            /* x should be uniform in [0,1] */
     return(x);
@@ -402,8 +430,10 @@ void generate_next_arrival()
     // float ttime;
     // int tempint;
 
-    if (TRACE>2)
+    if (TRACE>2) {
         printf("          GENERATE NEXT ARRIVAL: creating new arrival\n");
+        WriteIn("          GENERATE NEXT ARRIVAL: creating new arrival\n");
+    }
     
     x = lambda*jimsrand()*2;  /* x is uniform on [0,2*lambda] */
                                 /* having mean of lambda        */
@@ -424,7 +454,9 @@ void insertevent(struct event *p)
 
     if (TRACE>2) {
         printf("            INSERTEVENT: time is %lf\n",time);
-        printf("            INSERTEVENT: future time will be %lf\n",p->evtime); 
+        printf("            INSERTEVENT: future time will be %lf\n",p->evtime);
+        WriteIn("            INSERTEVENT: time is %lf\n",time);
+        WriteIn("            INSERTEVENT: future time will be %lf\n",p->evtime);  
         }
     q = evlist;     /* q points to header of list in which p struct inserted */
     if (q==NULL) {   /* list is empty */
@@ -460,10 +492,13 @@ void printevlist()
   struct event *q;
   int i;
   printf("--------------\nEvent List Follows:\n");
+  WriteIn("--------------\nEvent List Follows:\n");
   for(q = evlist; q!=NULL; q=q->next) {
     printf("Event time: %f, type: %d entity: %d\n",q->evtime,q->evtype,q->eventity);
+    WriteIn("Event time: %f, type: %d entity: %d\n",q->evtime,q->evtype,q->eventity);
     }
   printf("--------------\n");
+  WriteIn("--------------\n");
 }
 
 
@@ -475,8 +510,11 @@ void stoptimer(int AorB) /* A or B is trying to stop timer */
 {
     struct event *q,*qold;
 
-    if (TRACE>2)
+    if (TRACE>2) {
         printf("          STOP TIMER: stopping timer at %f\n",time);
+        WriteIn("          STOP TIMER: stopping timer at %f\n",time);
+    }
+        
     /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next)  */
     for (q=evlist; q!=NULL ; q = q->next) 
         if ( (q->evtype==TIMER_INTERRUPT  && q->eventity==AorB) ) { 
@@ -497,6 +535,7 @@ void stoptimer(int AorB) /* A or B is trying to stop timer */
         return;
         }
     printf("Warning: unable to cancel your timer. It wasn't running.\n");
+    WriteIn("Warning: unable to cancel your timer. It wasn't running.\n");
 }
 
 
@@ -507,13 +546,17 @@ void starttimer(int AorB,float increment) /* A or B is trying to stop timer */
     struct event *evptr;
     // char *malloc();
 
-    if (TRACE>2)
+    if (TRACE>2) {
         printf("          START TIMER: starting timer at %f\n",time);
+        WriteIn("          START TIMER: starting timer at %f\n",time);
+    }
+        
     /* be nice: check to see if timer is already started, if so, then  warn */
     /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next)  */
     for (q=evlist; q!=NULL ; q = q->next)  
         if ( (q->evtype==TIMER_INTERRUPT  && q->eventity==AorB) ) { 
             printf("Warning: attempt to start a timer that is already started\n");
+            WriteIn("Warning: attempt to start a timer that is already started\n");
             return;
         }
     
@@ -541,10 +584,12 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
     /* simulate losses: */
     if (jimsrand() < lossprob)  {
         nlost++;
-        if (TRACE>0)    
-        printf("          TOLAYER3: packet being lost\n");
+        if (TRACE>0) {
+            printf("          TOLAYER3: packet being lost\n");
+            WriteIn("          TOLAYER3: packet being lost\n");
+        }    
         return;
-        }  
+    }  
 
     /* make a copy of the packet student just gave me since he/she may decide */
     /* to do something with the packet after we return back to him/her */ 
@@ -555,10 +600,16 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
     for (i=0; i<20; i++)
         mypktptr->payload[i] = packet.payload[i];
     if (TRACE>2)  {
-    printf("          TOLAYER3: seq: %d, ack %d, check: %d ", mypktptr->seqnum,
+        printf("          TOLAYER3: seq: %d, ack %d, check: %d ", mypktptr->seqnum,
         mypktptr->acknum,  mypktptr->checksum);
-        for (i=0; i<20; i++)
+        WriteIn("          TOLAYER3: seq: %d, ack %d, check: %d ", mypktptr->seqnum,
+        mypktptr->acknum,  mypktptr->checksum);
+        for (i=0; i<20; i++) {
             printf("%c",mypktptr->payload[i]);
+            WriteIn("%c",mypktptr->payload[i]);
+        }
+            
+        WriteIn("\n");
         printf("\n");
     }
 
@@ -589,12 +640,18 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
         mypktptr->seqnum = 999999;
         else
         mypktptr->acknum = 999999;
-        if (TRACE>0)    
-        printf("          TOLAYER3: packet being corrupted\n");
+        if (TRACE>0) {
+            printf("          TOLAYER3: packet being corrupted\n");
+            WriteIn("          TOLAYER3: packet being corrupted\n");
+        }    
+        
         }  
 
-    if (TRACE>2)  
+    if (TRACE>2) {
         printf("          TOLAYER3: scheduling arrival on other side\n");
+        WriteIn("          TOLAYER3: scheduling arrival on other side\n");
+    }  
+        
     insertevent(evptr);
 } 
 
@@ -603,8 +660,12 @@ void tolayer5(int AorB, char datasent[20])
     int i;  
     if (TRACE>2) {
         printf("          TOLAYER5: data received: ");
-        for (i=0; i<20; i++)  
+        WriteIn("          TOLAYER5: data received: ");
+        for (i=0; i<20; i++) {
             printf("%c",datasent[i]);
+            WriteIn("%c",datasent[i]);
+        }  
+        WriteIn("\n");
         printf("\n");
     }
 }
