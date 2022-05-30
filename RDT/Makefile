@@ -2,19 +2,22 @@ SRC_DIR := src
 OBJ_DIR := obj
 
 SRC := $(wildcard $(SRC_DIR)/*.c)
-OBJ := $(OBJ_DIR)/StopAndWait.o
+OBJ := $(OBJ_DIR)/StopAndWait.o GoBackN.o
 BIN := SW
 CC := gcc
 CPPFLAGS := -Iinclude
 CFLAGS := -g -Wall
 
 default: all
-all : SW
+all : SW GBN
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(OBJ_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 SW: $(OBJ_DIR)/StopAndWait.o
+	$(CC) -Werror $^ -o $@
+
+GBN: $(OBJ_DIR)/GoBackN.o
 	$(CC) -Werror $^ -o $@
 
 $(OBJ_DIR):
