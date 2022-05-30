@@ -1,0 +1,23 @@
+{
+    "cSpell.words": [
+        "acknum",
+        "corruptprob",
+        "eventity",
+        "eventptr",
+        "evlist",
+        "evtime",
+        "evtype",
+        "expectednum",
+        "insertevent",
+        "jimsrand",
+        "lossprob",
+        "ncorrupt",
+        "nlost",
+        "nsimmax",
+        "ntolayer",
+        "pktptr",
+        "starttimer",
+        "timerinterrupt",
+        "tolayer"
+    ]
+}
