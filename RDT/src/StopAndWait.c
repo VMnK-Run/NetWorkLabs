@@ -104,7 +104,7 @@ void A_output(struct msg message)
     WriteIn("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
     if(A.A_state == WAIT) {
         printf("[Sender] The above application data discarded since waiting for ACK\n");
-        WriteIn("[Sender] The above application data discarded since waiting for ACK\n");
+        WriteIn("[Sender] The above application data discarded since waiting for ACK\n", 0);
         return;
     } else {
         out_pkt.acknum = A.wait_acknum;
@@ -133,7 +133,7 @@ void A_input(struct pkt packet)
     int checksum = getChecksum(packet);
     if(checksum != packet.checksum) {
         printf("[Sender] Corrupt packet received.\n");
-        WriteIn("[Sender] Corrupt packet received.\n");
+        WriteIn("[Sender] Corrupt packet received.\n", 0);
         return;
     }
     if(packet.acknum == A.wait_acknum) {
@@ -182,7 +182,7 @@ void B_input(struct pkt packet)
 
     if(checksum != packet.checksum) {
         printf("[Receiver] Corrupt packet received.\n");
-        WriteIn("[Receiver] Corrupt packet received.\n");
+        WriteIn("[Receiver] Corrupt packet received.\n", 0);
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
         tolayer3(1, out_pkt);
@@ -192,7 +192,7 @@ void B_input(struct pkt packet)
     }
     if(packet.seqnum != B_expectednum) {
         printf("[Receiver] Corrupt packet received.\n");
-        WriteIn("[Receiver] Corrupt packet received.\n");
+        WriteIn("[Receiver] Corrupt packet received.\n", 0);
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
         tolayer3(1, out_pkt);
@@ -294,14 +294,14 @@ int main()
             WriteIn("\nEVENT time: %f,",eventptr->evtime);
             WriteIn("  type: %d",eventptr->evtype);
             if (eventptr->evtype==0)
-                {printf(", timerinterrupt  ");WriteIn(", timerinterrupt  ");}
+                {printf(", timerinterrupt  ");WriteIn(", timerinterrupt  ", 0);}
             else if (eventptr->evtype==1) {
                 printf(", fromlayer5 ");
-                WriteIn(", fromlayer5 ");
+                WriteIn(", fromlayer5 ", 0);
             }
             else {
                 printf(", fromlayer3 ");
-                WriteIn(", fromlayer3 ");
+                WriteIn(", fromlayer3 ", 0);
             }
                 
             printf(" entity: %d\n",eventptr->eventity);
@@ -319,12 +319,12 @@ int main()
                 msg2give.data[i] = 97 + j;
             if (TRACE>2) {
                 printf("          MAINLOOP: data given to student: ");
-                WriteIn("          MAINLOOP: data given to student: ");
+                WriteIn("          MAINLOOP: data given to student: ", 0);
                 for (i=0; i<20; i++) {
                     printf("%c", msg2give.data[i]);
                     WriteIn("%c", msg2give.data[i]);
                 } 
-                WriteIn("\n");
+                WriteIn("\n", 0);
                 printf("\n");
             }
             nsim++;
@@ -354,7 +354,7 @@ int main()
         }
         else {
             printf("INTERNAL PANIC: unknown event type \n");
-            WriteIn("INTERNAL PANIC: unknown event type \n");
+            WriteIn("INTERNAL PANIC: unknown event type \n", 0);
         }
         free(eventptr);
     }
@@ -373,7 +373,7 @@ void init()                         /* initialize the simulator */
     float jimsrand();
 
     printf("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n");
-    WriteIn("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n");
+    WriteIn("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n", 0);
     printf("Enter the number of messages to simulate: ");
     scanf("%d",&nsimmax);
     printf("Enter  packet loss probability [enter 0.0 for no loss]:");
@@ -412,7 +412,7 @@ void init()                         /* initialize the simulator */
 /****************************************************************************/
 float jimsrand() 
 {
-    double mmm = 2147483647;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
+    double mmm = 32767;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
     float x;                   /* individual students may need to change mmm */ 
     x = rand()/mmm;            /* x should be uniform in [0,1] */
     return(x);
@@ -432,7 +432,7 @@ void generate_next_arrival()
 
     if (TRACE>2) {
         printf("          GENERATE NEXT ARRIVAL: creating new arrival\n");
-        WriteIn("          GENERATE NEXT ARRIVAL: creating new arrival\n");
+        WriteIn("          GENERATE NEXT ARRIVAL: creating new arrival\n", 0);
     }
     
     x = lambda*jimsrand()*2;  /* x is uniform on [0,2*lambda] */
@@ -492,13 +492,13 @@ void printevlist()
   struct event *q;
   int i;
   printf("--------------\nEvent List Follows:\n");
-  WriteIn("--------------\nEvent List Follows:\n");
+  WriteIn("--------------\nEvent List Follows:\n", 0);
   for(q = evlist; q!=NULL; q=q->next) {
     printf("Event time: %f, type: %d entity: %d\n",q->evtime,q->evtype,q->eventity);
     WriteIn("Event time: %f, type: %d entity: %d\n",q->evtime,q->evtype,q->eventity);
     }
   printf("--------------\n");
-  WriteIn("--------------\n");
+  WriteIn("--------------\n", 0);
 }
 
 
@@ -535,7 +535,7 @@ void stoptimer(int AorB) /* A or B is trying to stop timer */
         return;
         }
     printf("Warning: unable to cancel your timer. It wasn't running.\n");
-    WriteIn("Warning: unable to cancel your timer. It wasn't running.\n");
+    WriteIn("Warning: unable to cancel your timer. It wasn't running.\n", 0);
 }
 
 
@@ -556,7 +556,7 @@ void starttimer(int AorB,float increment) /* A or B is trying to stop timer */
     for (q=evlist; q!=NULL ; q = q->next)  
         if ( (q->evtype==TIMER_INTERRUPT  && q->eventity==AorB) ) { 
             printf("Warning: attempt to start a timer that is already started\n");
-            WriteIn("Warning: attempt to start a timer that is already started\n");
+            WriteIn("Warning: attempt to start a timer that is already started\n", 0);
             return;
         }
     
@@ -586,7 +586,7 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
         nlost++;
         if (TRACE>0) {
             printf("          TOLAYER3: packet being lost\n");
-            WriteIn("          TOLAYER3: packet being lost\n");
+            WriteIn("          TOLAYER3: packet being lost\n", 0);
         }    
         return;
     }  
@@ -609,7 +609,7 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
             WriteIn("%c",mypktptr->payload[i]);
         }
             
-        WriteIn("\n");
+        WriteIn("\n", 0);
         printf("\n");
     }
 
@@ -642,14 +642,14 @@ void tolayer3(int AorB, struct pkt packet) /* A or B is trying to stop timer */
         mypktptr->acknum = 999999;
         if (TRACE>0) {
             printf("          TOLAYER3: packet being corrupted\n");
-            WriteIn("          TOLAYER3: packet being corrupted\n");
+            WriteIn("          TOLAYER3: packet being corrupted\n", 0);
         }    
         
         }  
 
     if (TRACE>2) {
         printf("          TOLAYER3: scheduling arrival on other side\n");
-        WriteIn("          TOLAYER3: scheduling arrival on other side\n");
+        WriteIn("          TOLAYER3: scheduling arrival on other side\n", 0);
     }  
         
     insertevent(evptr);
@@ -660,12 +660,12 @@ void tolayer5(int AorB, char datasent[20])
     int i;  
     if (TRACE>2) {
         printf("          TOLAYER5: data received: ");
-        WriteIn("          TOLAYER5: data received: ");
+        WriteIn("          TOLAYER5: data received: ", 0);
         for (i=0; i<20; i++) {
             printf("%c",datasent[i]);
             WriteIn("%c",datasent[i]);
         }  
-        WriteIn("\n");
+        WriteIn("\n", 0);
         printf("\n");
     }
 }

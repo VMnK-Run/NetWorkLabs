@@ -3,7 +3,7 @@ OBJ_DIR := obj
 
 SRC := $(wildcard $(SRC_DIR)/*.c)
 OBJ := $(OBJ_DIR)/StopAndWait.o GoBackN.o
-BIN := SW
+BIN := SW SW.exe GBN.exe
 CC := gcc
 CPPFLAGS := -Iinclude
 CFLAGS := -g -Wall
@@ -26,7 +26,7 @@ $(OBJ_DIR):
 .PHONY: clean
 
 clean:
-# del $(BIN)
-# rmdir /s/q $(OBJ_DIR)
-	$(RM) $(OBJ) $(BIN) log/*.txt
-	$(RM) -rf $(OBJ_DIR) 
+	del $(BIN) 
+	rmdir /s/q $(OBJ_DIR)
+#	$(RM) $(OBJ) $(BIN) log/*.txt
+#	$(RM) -rf $(OBJ_DIR) 
