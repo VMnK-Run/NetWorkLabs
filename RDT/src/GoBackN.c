@@ -60,7 +60,7 @@ void stoptimer(int AorB);
 void tolayer3(int AorB, struct pkt);
 void tolayer5(int AorB, char datasent[20]);
 
-#define FILE_NAME "../RDT/log/sw_trace.txt"
+#define FILE_NAME "../RDT/log/BGN_trace.txt"
 #define WriteIn(format, ...) \
         do {\
             FILE *file;\
@@ -69,16 +69,12 @@ void tolayer5(int AorB, char datasent[20]);
             fclose(file);\
         } while(0)
 
-float A_inter = 20.0; // 重发时间间隔
+const float A_inter = 20.0; // 重发时间间隔 
 enum state {READY, WAIT}; // 规定sender的两种状态
-struct A_sender
-{
-    struct pkt A_buffer;
-    enum state A_state;
-    int next_seqnum;
-    int wait_acknum;
-} A;
-int B_expectednum;
+struct pkt buf[50];       // 缓冲区
+int window_size = 8;
+int base, nextseqnum;
+int expectednum;
 
 
 int getChecksum(struct pkt packet) {
@@ -93,33 +89,26 @@ int getChecksum(struct pkt packet) {
 /* called from layer 5, passed the data to be sent to other side */
 void A_output(struct msg message)
 {
-    struct pkt out_pkt;
-    memcpy(out_pkt.payload, message.data, 20);
-    char temp[20];
-    for(int i = 0; i < 20; i++) {
-        if(out_pkt.payload[i] == '`') break;
-        else temp[i] = out_pkt.payload[i];
-    }
-    printf("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
-    WriteIn("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
-    if(A.A_state == WAIT) {
-        printf("[Sender] The above application data discarded since waiting for ACK\n");
-        WriteIn("[Sender] The above application data discarded since waiting for ACK\n", 0);
+    if(nextseqnum - base >= window_size) { // 窗口满了
+        printf("[Sender] The Window is full.\n");
+        WriteIn("[Sender] The Window is full.\n", 0);
         return;
-    } else {
-        out_pkt.acknum = A.wait_acknum;
-        out_pkt.seqnum = A.next_seqnum;
-        out_pkt.checksum = getChecksum(out_pkt);
-        A.wait_acknum = (A.wait_acknum + 1) % 2;
-        A.next_seqnum = (A.next_seqnum + 1) % 2;
-        A.A_state = WAIT;
-        A.A_buffer = out_pkt;
+    }
+    struct pkt sndpkt;
+    memcpy(sndpkt.payload, message.data, 20);
+    printf("[Sender] Application data \"%s\" generated.\n", sndpkt.payload);
+    WriteIn("[Sender] Application data \"%s\" generated.\n", sndpkt.payload);
+    sndpkt.acknum = 0;
+    sndpkt.seqnum = nextseqnum;
+    sndpkt.checksum = getChecksum(sndpkt);
+    buf[nextseqnum] = sndpkt;
+    tolayer3(0, sndpkt);
+    printf("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", sndpkt.seqnum, sndpkt.seqnum, sndpkt.checksum);
+    WriteIn("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", sndpkt.seqnum, sndpkt.seqnum, sndpkt.checksum);
+    if(base == nextseqnum) {
         starttimer(0, A_inter);
-        tolayer3(0, out_pkt);
-        printf("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", out_pkt.seqnum, out_pkt.seqnum, out_pkt.checksum);
-        WriteIn("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", out_pkt.seqnum, out_pkt.seqnum, out_pkt.checksum);
-        return;
     }
+    nextseqnum++;
 }
 
 void B_output(struct msg message)  /* need be completed only for extra credit */
@@ -131,30 +120,38 @@ void B_output(struct msg message)  /* need be completed only for extra credit */
 void A_input(struct pkt packet)
 {
     int checksum = getChecksum(packet);
-    if(checksum != packet.checksum) {
+    if(packet.checksum != checksum) {
         printf("[Sender] Corrupt packet received.\n");
         WriteIn("[Sender] Corrupt packet received.\n", 0);
         return;
     }
-    if(packet.acknum == A.wait_acknum) {
-        printf("[Sender] ACK %d received.\n", packet.seqnum);
-        WriteIn("[Sender] ACK %d received.\n", packet.seqnum);
-        stoptimer(0);
-        A.A_state = READY;
-        return;
-    } else {
+    if(packet.acknum == 1) {
         printf("[Sender] Corrupted packet Received At %d\n", packet.acknum);
         WriteIn("[Sender] Corrupted packet Received At %d\n", packet.acknum);
         return;
+    }
+    if(packet.seqnum < base) {
+        printf("[Sender] Wrong packet seqnum At %d\n", packet.seqnum);
+        WriteIn("[Sender] Wrong packet seqnum At %d\n", packet.seqnum);
+        return;
+    }
+    base = packet.seqnum + 1;
+    if(base == nextseqnum) {
+        stoptimer(0);
+    } else {
+        stoptimer(0);
+        starttimer(0, A_inter);
     }
 }
 
 /* called when A's timer goes off */
 int A_timerinterrupt()
 {
-    printf("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
-    WriteIn("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
-    tolayer3(0, A.A_buffer);
+    for(int i = base; i < nextseqnum; i++) {
+        printf("[Sender] Timeout. Re-sending packet %d\n", buf[i].seqnum);
+        WriteIn("[Sender] Timeout. Re-sending packet %d\n", buf[i].seqnum);
+        tolayer3(0, buf[i]);
+    }
     starttimer(0, A_inter);
 }  
 
@@ -162,10 +159,8 @@ int A_timerinterrupt()
 /* entity A routines are called. You can use it to do any initialization */
 void A_init()
 {
-    A.A_state = READY;
-    A.next_seqnum = 0;
-    A.wait_acknum = 0;
-    memset(&A.A_buffer, 0, sizeof(A.A_buffer));
+    base = 0;
+    nextseqnum = 0;
 }
 
 
@@ -174,44 +169,38 @@ void A_init()
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
-    struct pkt out_pkt; // 回传的确认包
-    struct msg message;
-    memset(out_pkt.payload, 0, sizeof(out_pkt.payload));
-    out_pkt.seqnum = packet.seqnum;
     int checksum = getChecksum(packet);
-
+    struct pkt sndpkt;
+    memset(sndpkt.payload, 0, sizeof(sndpkt.payload));
+    int notcorrupt = 1;
+    int hasseqnum = 1;
     if(checksum != packet.checksum) {
+        notcorrupt = 0;
+    }
+    if(packet.seqnum != expectednum) {
+        hasseqnum = 0;
+    }
+    sndpkt.acknum = notcorrupt ? 0 : 1;
+    sndpkt.seqnum = hasseqnum ? packet.seqnum : expectednum - 1;
+    sndpkt.checksum = getChecksum(sndpkt);
+    if(hasseqnum) {
+        expectednum++;
+    }
+    if(notcorrupt && hasseqnum) {
+        printf("[Receiver] Packet %d received.\n", packet.seqnum);
+        WriteIn("[Receiver] Packet %d received.\n", packet.seqnum);
+        printf("[Receiver] ACK %d sent.\n", sndpkt.seqnum);
+        WriteIn("[Receiver] ACK %d sent.\n", sndpkt.seqnum);
+        tolayer5(1, packet.payload);
+        printf("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
+        WriteIn("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
+    } else {
         printf("[Receiver] Corrupt packet received.\n");
         WriteIn("[Receiver] Corrupt packet received.\n", 0);
-        out_pkt.acknum = B_expectednum;
-        out_pkt.checksum = getChecksum(out_pkt);
-        tolayer3(1, out_pkt);
-        printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
-        WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
-        return;
+        printf("[Receiver] Re-sending ACK %d.\n", sndpkt.seqnum);
+        WriteIn("[Receiver] Re-sending ACK %d.\n", sndpkt.seqnum);
     }
-    if(packet.seqnum != B_expectednum) {
-        printf("[Receiver] Corrupt packet received.\n");
-        WriteIn("[Receiver] Corrupt packet received.\n", 0);
-        out_pkt.acknum = B_expectednum;
-        out_pkt.checksum = getChecksum(out_pkt);
-        tolayer3(1, out_pkt);
-        printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
-        WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
-        return;
-    }
-    printf("[Receiver] Packet %d received.\n", packet.seqnum);
-    WriteIn("[Receiver] Packet %d received.\n", packet.seqnum);
-    printf("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
-    WriteIn("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
-    B_expectednum = (B_expectednum + 1) % 2;
-    out_pkt.acknum = B_expectednum;
-    out_pkt.checksum = getChecksum(out_pkt);
-    tolayer3(1, out_pkt);
-    printf("[Receiver] ACK %d sent.\n", out_pkt.seqnum);
-    WriteIn("[Receiver] ACK %d sent.\n", out_pkt.seqnum);
-    memcpy(message.data, packet.payload, 20);
-    tolayer5(1, message.data);
+    tolayer3(1, sndpkt);
 }
 
 /* called when B's timer goes off */
@@ -223,7 +212,7 @@ void B_timerinterrupt()
 /* entity B routines are called. You can use it to do any initialization */
 void B_init()
 {
-    B_expectednum = 0;
+    expectednum = 0;
 }
 
 
@@ -372,8 +361,8 @@ void init()                         /* initialize the simulator */
     float sum, avg;
     float jimsrand();
 
-    printf("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n");
-    WriteIn("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n", 0);
+    printf("-----  Go Back N Network Simulator Version 1.1 -------- \n\n");
+    WriteIn("-----  Go Back N Network Simulator Version 1.1 -------- \n\n", 0);
     printf("Enter the number of messages to simulate: ");
     scanf("%d",&nsimmax);
     printf("Enter  packet loss probability [enter 0.0 for no loss]:");
@@ -412,7 +401,7 @@ void init()                         /* initialize the simulator */
 /****************************************************************************/
 float jimsrand() 
 {
-    double mmm = 2147483647;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
+    double mmm = 32767;   /* largest int  - MACHINE DEPENDENT!!!!!!!!  32767 or 2147483647   */
     float x;                   /* individual students may need to change mmm */ 
     x = rand()/mmm;            /* x should be uniform in [0,1] */
     return(x);
