@@ -376,14 +376,19 @@ void init()                         /* initialize the simulator */
     WriteIn("-----  Stop and Wait Network Simulator Version 1.1 -------- \n\n", 0);
     printf("Enter the number of messages to simulate: ");
     scanf("%d",&nsimmax);
+    WriteIn("Enter the number of messages to simulate: %d\n", nsimmax);
     printf("Enter  packet loss probability [enter 0.0 for no loss]:");
     scanf("%f",&lossprob);
+    WriteIn("Enter  packet loss probability [enter 0.0 for no loss]:%f\n", lossprob);
     printf("Enter packet corruption probability [0.0 for no corruption]:");
     scanf("%f",&corruptprob);
+    WriteIn("Enter packet corruption probability [0.0 for no corruption]:%f\n", corruptprob);
     printf("Enter average time between messages from sender's layer5 [ > 0.0]:");
     scanf("%f",&lambda);
+    WriteIn("Enter average time between messages from sender's layer5 [ > 0.0]:%f\n", lambda);
     printf("Enter TRACE:");
     scanf("%d",&TRACE);
+    WriteIn("Enter TRACE:%d\n\n", TRACE);
 
     srand(9999);              /* init random number generator */
     sum = 0.0;                /* test random number generator for students */

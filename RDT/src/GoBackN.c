@@ -60,7 +60,7 @@ void stoptimer(int AorB);
 void tolayer3(int AorB, struct pkt);
 void tolayer5(int AorB, char datasent[20]);
 
-#define FILE_NAME "../RDT/log/BGN_trace.txt"
+#define FILE_NAME "../RDT/log/GBN_trace.txt"
 #define WriteIn(format, ...) \
         do {\
             FILE *file;\
@@ -71,7 +71,7 @@ void tolayer5(int AorB, char datasent[20]);
 
 const float A_inter = 20.0; // 重发时间间隔 
 enum state {READY, WAIT}; // 规定sender的两种状态
-struct pkt buf[50];       // 缓冲区
+struct pkt buf[200];       // 缓冲区
 int window_size = 8;
 int base, nextseqnum;
 int expectednum;
@@ -126,8 +126,8 @@ void A_input(struct pkt packet)
         return;
     }
     if(packet.acknum == 1) {
-        printf("[Sender] Corrupted packet Received At %d\n", packet.acknum);
-        WriteIn("[Sender] Corrupted packet Received At %d\n", packet.acknum);
+        printf("[Sender] Corrupted packet Received At %d\n", packet.seqnum);
+        WriteIn("[Sender] Corrupted packet Received At %d\n", packet.seqnum);
         return;
     }
     if(packet.seqnum < base) {
@@ -365,15 +365,20 @@ void init()                         /* initialize the simulator */
     WriteIn("-----  Go Back N Network Simulator Version 1.1 -------- \n\n", 0);
     printf("Enter the number of messages to simulate: ");
     scanf("%d",&nsimmax);
+    WriteIn("Enter the number of messages to simulate: %d\n", nsimmax);
     printf("Enter  packet loss probability [enter 0.0 for no loss]:");
     scanf("%f",&lossprob);
+    WriteIn("Enter  packet loss probability [enter 0.0 for no loss]:%f\n", lossprob);
     printf("Enter packet corruption probability [0.0 for no corruption]:");
     scanf("%f",&corruptprob);
+    WriteIn("Enter packet corruption probability [0.0 for no corruption]:%f\n", corruptprob);
     printf("Enter average time between messages from sender's layer5 [ > 0.0]:");
     scanf("%f",&lambda);
+    WriteIn("Enter average time between messages from sender's layer5 [ > 0.0]:%f\n", lambda);
     printf("Enter TRACE:");
     scanf("%d",&TRACE);
-
+    WriteIn("Enter TRACE:%d\n\n", TRACE);
+    
     srand(9999);              /* init random number generator */
     sum = 0.0;                /* test random number generator for students */
     for (i=0; i<1000; i++)

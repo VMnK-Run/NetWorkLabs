@@ -26,7 +26,8 @@ $(OBJ_DIR):
 .PHONY: clean
 
 clean:
-#	del $(BIN) 
-#	rmdir /s/q $(OBJ_DIR)
-	$(RM) $(OBJ) $(BIN) log/*.txt
-	$(RM) -rf $(OBJ_DIR) 
+	del $(BIN)
+	del log/*.txt 
+	rmdir /s/q $(OBJ_DIR)
+# $(RM) $(OBJ) $(BIN) log/*.txt
+# $(RM) -rf $(OBJ_DIR) 
