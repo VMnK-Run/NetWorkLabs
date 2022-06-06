@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "project3.h"
+#include "utils.h"
 
 #define NODEID 0
 
@@ -47,6 +48,7 @@ void rtinit0() {
 
 	if (TraceLevel >= 2) {
 		printf("At time t=%.3f,rtinid%d() called.\n", clocktime, NODEID);
+		WriteIn("At time t=%.3f,rtinid%d() called.\n", clocktime, NODEID);
 	}
 
 	// get the initial neighbors
