@@ -81,6 +81,7 @@ void rtinit2() {
 			for (j = 0; j < numNodes; j++) {
 				toSend.mincost[j] = dt2.costs[j][j];
 			}
+			printf("node%d told node %d the initial DV{%d, %d, %d, %d}\n", NODEID, i, toSend.mincost[0], toSend.mincost[1], toSend.mincost[2], toSend.mincost[3]);
 			// send packet to neighbor
 			toLayer2(toSend);
 		}
@@ -136,13 +137,14 @@ void rtupdate2( struct RoutePacket *rcvdpkt ) {
 		
 		// construct packets to send to neighbors
 		toSend.sourceid = NODEID;
-		for (n = 0; n < numNodes && n != NODEID; n++) {
-			for (i = 0; i < numNodes; i++) {
-				for (j = 0; j < numNodes; j++) {
-					if (toSend.mincost[i] > dt2.costs[i][j])
-						toSend.mincost[i] = dt2.costs[i][j];
-				}
+		for (i = 0; i < numNodes; i++) {
+			for (j = 0; j < numNodes; j++) {
+				if (toSend.mincost[i] > dt2.costs[i][j])
+					toSend.mincost[i] = dt2.costs[i][j];	// 遍历图，更新mincost数组
 			}
+		}
+		for (n = 0; n < numNodes; n++) {
+			if(n == NODEID) continue;
 			toSend.destid = n;
 			if (TraceLevel >= 2) {
 				printf("At time t=%.3f, node %d sends packet to node %d with: ", clocktime, NODEID, n);
@@ -154,7 +156,8 @@ void rtupdate2( struct RoutePacket *rcvdpkt ) {
 			toLayer2(toSend);
 		}
 
-	}
+	} 
+	printf("node%d distance table updated finished! \n", NODEID);
 
 }
 
