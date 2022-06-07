@@ -60,6 +60,7 @@ void stoptimer(int AorB);
 void tolayer3(int AorB, struct pkt);
 void tolayer5(int AorB, char datasent[20]);
 
+// 用于输出到指定文件
 #define FILE_NAME "../RDT/log/sw_trace.txt"
 #define WriteIn(format, ...) \
         do {\
@@ -73,14 +74,15 @@ float A_inter = 20.0; // 重发时间间隔
 enum state {READY, WAIT}; // 规定sender的两种状态
 struct A_sender
 {
-    struct pkt A_buffer;
-    enum state A_state;
-    int next_seqnum;
-    int wait_acknum;
-} A;
-int B_expectednum;
+    struct pkt A_buffer; // 发送方缓存的packet
+    enum state A_state;  // 当前状态：WAIT or READY
+    int next_seqnum;     // 下一个要发送的序号
+    int wait_acknum;     // 发送方期望的acknum
+} A; // 发送方当前状态信息组合
+int B_expectednum;      // 接收方期望的序号
 
 
+// 计算checknum
 int getChecksum(struct pkt packet) {
     int sum = 0;
     sum += (packet.seqnum + packet.acknum);
@@ -94,26 +96,21 @@ int getChecksum(struct pkt packet) {
 void A_output(struct msg message)
 {
     struct pkt out_pkt;
-    memcpy(out_pkt.payload, message.data, 20);
-    char temp[20];
-    for(int i = 0; i < 20; i++) {
-        if(out_pkt.payload[i] == '`') break;
-        else temp[i] = out_pkt.payload[i];
-    }
+    memcpy(out_pkt.payload, message.data, 20); // 构造packet
     printf("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
     WriteIn("[Sender] Application data \"%s\" generated.\n", out_pkt.payload);
-    if(A.A_state == WAIT) {
+    if(A.A_state == WAIT) { // 当前状态不可发送
         printf("[Sender] The above application data discarded since waiting for ACK\n");
         WriteIn("[Sender] The above application data discarded since waiting for ACK\n", 0);
         return;
     } else {
         out_pkt.acknum = A.wait_acknum;
         out_pkt.seqnum = A.next_seqnum;
-        out_pkt.checksum = getChecksum(out_pkt);
-        A.wait_acknum = (A.wait_acknum + 1) % 2;
-        A.next_seqnum = (A.next_seqnum + 1) % 2;
-        A.A_state = WAIT;
-        A.A_buffer = out_pkt;
+        out_pkt.checksum = getChecksum(out_pkt); // 更新packet中的信息
+        A.wait_acknum = (A.wait_acknum + 1) % 2; 
+        A.next_seqnum = (A.next_seqnum + 1) % 2; // 更新发送方信息组合
+        A.A_state = WAIT; 
+        A.A_buffer = out_pkt;  // 更新当前状态和缓冲区
         starttimer(0, A_inter);
         tolayer3(0, out_pkt);
         printf("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", out_pkt.seqnum, out_pkt.seqnum, out_pkt.checksum);
@@ -131,18 +128,18 @@ void B_output(struct msg message)  /* need be completed only for extra credit */
 void A_input(struct pkt packet)
 {
     int checksum = getChecksum(packet);
-    if(checksum != packet.checksum) {
+    if(checksum != packet.checksum) { // 信息出错
         printf("[Sender] Corrupt packet received.\n");
         WriteIn("[Sender] Corrupt packet received.\n", 0);
         return;
     }
-    if(packet.acknum == A.wait_acknum) {
+    if(packet.acknum == A.wait_acknum) { // 正确的信息
         printf("[Sender] ACK %d received.\n", packet.seqnum);
         WriteIn("[Sender] ACK %d received.\n", packet.seqnum);
         stoptimer(0);
         A.A_state = READY;
         return;
-    } else {
+    } else {  // 信息出错
         printf("[Sender] Corrupted packet Received At %d\n", packet.acknum);
         WriteIn("[Sender] Corrupted packet Received At %d\n", packet.acknum);
         return;
@@ -154,8 +151,8 @@ int A_timerinterrupt()
 {
     printf("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
     WriteIn("[Sender] Timeout. Re-sending packet %d\n", A.A_buffer.seqnum);
-    tolayer3(0, A.A_buffer);
-    starttimer(0, A_inter);
+    tolayer3(0, A.A_buffer); // 发送缓冲区的信息
+    starttimer(0, A_inter); //开始计时
 }  
 
 /* the following routine will be called once (only) before any other */
@@ -180,22 +177,22 @@ void B_input(struct pkt packet)
     out_pkt.seqnum = packet.seqnum;
     int checksum = getChecksum(packet);
 
-    if(checksum != packet.checksum) {
+    if(checksum != packet.checksum) {  // checksum出错
         printf("[Receiver] Corrupt packet received.\n");
         WriteIn("[Receiver] Corrupt packet received.\n", 0);
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
-        tolayer3(1, out_pkt);
+        tolayer3(1, out_pkt);         // 回传确认包
         printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         return;
     }
-    if(packet.seqnum != B_expectednum) {
+    if(packet.seqnum != B_expectednum) {  // 不是期望得到的报文
         printf("[Receiver] Corrupt packet received.\n");
         WriteIn("[Receiver] Corrupt packet received.\n", 0);
         out_pkt.acknum = B_expectednum;
         out_pkt.checksum = getChecksum(out_pkt);
-        tolayer3(1, out_pkt);
+        tolayer3(1, out_pkt);           // 回传
         printf("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         WriteIn("[Receiver] Re-sending ACK %d.\n", out_pkt.seqnum);
         return;
@@ -206,7 +203,7 @@ void B_input(struct pkt packet)
     WriteIn("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
     B_expectednum = (B_expectednum + 1) % 2;
     out_pkt.acknum = B_expectednum;
-    out_pkt.checksum = getChecksum(out_pkt);
+    out_pkt.checksum = getChecksum(out_pkt);   // 得到正确的报文，更新接收方信息和回传确认包
     tolayer3(1, out_pkt);
     printf("[Receiver] ACK %d sent.\n", out_pkt.seqnum);
     WriteIn("[Receiver] ACK %d sent.\n", out_pkt.seqnum);

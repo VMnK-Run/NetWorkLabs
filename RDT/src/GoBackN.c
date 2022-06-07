@@ -60,6 +60,7 @@ void stoptimer(int AorB);
 void tolayer3(int AorB, struct pkt);
 void tolayer5(int AorB, char datasent[20]);
 
+// 用于指定输出文件
 #define FILE_NAME "../RDT/log/GBN_trace.txt"
 #define WriteIn(format, ...) \
         do {\
@@ -72,11 +73,12 @@ void tolayer5(int AorB, char datasent[20]);
 const float A_inter = 20.0; // 重发时间间隔 
 enum state {READY, WAIT}; // 规定sender的两种状态
 struct pkt buf[200];       // 缓冲区
-int window_size = 8;
-int base, nextseqnum;
-int expectednum;
+int window_size = 8;       // 窗口大小
+int base, nextseqnum;       // base 和 nextseqnum
+int expectednum;           // 期望得到的num
 
 
+// 计算checksum
 int getChecksum(struct pkt packet) {
     int sum = 0;
     sum += (packet.seqnum + packet.acknum);
@@ -95,17 +97,17 @@ void A_output(struct msg message)
         return;
     }
     struct pkt sndpkt;
-    memcpy(sndpkt.payload, message.data, 20);
+    memcpy(sndpkt.payload, message.data, 20);  // 构造packet
     printf("[Sender] Application data \"%s\" generated.\n", sndpkt.payload);
     WriteIn("[Sender] Application data \"%s\" generated.\n", sndpkt.payload);
     sndpkt.acknum = 0;
     sndpkt.seqnum = nextseqnum;
     sndpkt.checksum = getChecksum(sndpkt);
-    buf[nextseqnum] = sndpkt;
+    buf[nextseqnum] = sndpkt;                   // 更新packet，并存入buf
     tolayer3(0, sndpkt);
     printf("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", sndpkt.seqnum, sndpkt.seqnum, sndpkt.checksum);
     WriteIn("[Sender] Packet %d sent. seqnum: %d, checksum: %d\n", sndpkt.seqnum, sndpkt.seqnum, sndpkt.checksum);
-    if(base == nextseqnum) {
+    if(base == nextseqnum) {   // 需要重新计时
         starttimer(0, A_inter);
     }
     nextseqnum++;
@@ -120,23 +122,23 @@ void B_output(struct msg message)  /* need be completed only for extra credit */
 void A_input(struct pkt packet)
 {
     int checksum = getChecksum(packet);
-    if(packet.checksum != checksum) {
+    if(packet.checksum != checksum) {  // 接收方的数据包出错
         printf("[Sender] Corrupt packet received.\n");
         WriteIn("[Sender] Corrupt packet received.\n", 0);
         return;
     }
-    if(packet.acknum == 1) {
+    if(packet.acknum == 1) {           // 发送方的数据包出错
         printf("[Sender] Corrupted packet Received At %d\n", packet.seqnum);
         WriteIn("[Sender] Corrupted packet Received At %d\n", packet.seqnum);
         return;
     }
-    if(packet.seqnum < base) {
+    if(packet.seqnum < base) {          // 不是期望得到的数据包
         printf("[Sender] Wrong packet seqnum At %d\n", packet.seqnum);
         WriteIn("[Sender] Wrong packet seqnum At %d\n", packet.seqnum);
         return;
     }
-    base = packet.seqnum + 1;
-    if(base == nextseqnum) {
+    base = packet.seqnum + 1;          // 更新
+    if(base == nextseqnum) {           // 需要重新计时
         stoptimer(0);
     } else {
         stoptimer(0);
@@ -147,7 +149,7 @@ void A_input(struct pkt packet)
 /* called when A's timer goes off */
 int A_timerinterrupt()
 {
-    for(int i = base; i < nextseqnum; i++) {
+    for(int i = base; i < nextseqnum; i++) { // 重发该范围内的数据包
         printf("[Sender] Timeout. Re-sending packet %d\n", buf[i].seqnum);
         WriteIn("[Sender] Timeout. Re-sending packet %d\n", buf[i].seqnum);
         tolayer3(0, buf[i]);
@@ -172,21 +174,21 @@ void B_input(struct pkt packet)
     int checksum = getChecksum(packet);
     struct pkt sndpkt;
     memset(sndpkt.payload, 0, sizeof(sndpkt.payload));
-    int notcorrupt = 1;
-    int hasseqnum = 1;
+    int notcorrupt = 1;     // 表示数据出错
+    int hasseqnum = 1;      // 表示数据包序号正确
     if(checksum != packet.checksum) {
         notcorrupt = 0;
     }
     if(packet.seqnum != expectednum) {
         hasseqnum = 0;
     }
-    sndpkt.acknum = notcorrupt ? 0 : 1;
-    sndpkt.seqnum = hasseqnum ? packet.seqnum : expectednum - 1;
+    sndpkt.acknum = notcorrupt ? 0 : 1;             // 构造回传确认包的seqnum
+    sndpkt.seqnum = hasseqnum ? packet.seqnum : expectednum - 1;       // 构造回传确认包的seqnum
     sndpkt.checksum = getChecksum(sndpkt);
     if(hasseqnum) {
         expectednum++;
     }
-    if(notcorrupt && hasseqnum) {
+    if(notcorrupt && hasseqnum) {           // 符合要求的数据包
         printf("[Receiver] Packet %d received.\n", packet.seqnum);
         WriteIn("[Receiver] Packet %d received.\n", packet.seqnum);
         printf("[Receiver] ACK %d sent.\n", sndpkt.seqnum);
@@ -194,7 +196,7 @@ void B_input(struct pkt packet)
         tolayer5(1, packet.payload);
         printf("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
         WriteIn("[Receiver] Data \"%s\" handed over to application layer.\n", packet.payload);
-    } else {
+    } else {            // 出现错误
         printf("[Receiver] Corrupt packet received.\n");
         WriteIn("[Receiver] Corrupt packet received.\n", 0);
         printf("[Receiver] Re-sending ACK %d.\n", sndpkt.seqnum);

@@ -6,7 +6,7 @@
 //
 //  1.1  12/01/2013   JB    - Created for the purpose of better code?
 //////////////////////////////////////////////////////////////////////
-
+#include "utils.h"
 //  In this assignment, we are NOT enabling a mode that causes
 //  the cost of edges to change with time.
 #define LINKCHANGES 0 
